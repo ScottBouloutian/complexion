@@ -18,13 +18,16 @@ function setup() {
     var BLUE = color(52, 152, 219);
     var PURPLE = color(155, 89, 182);
     var PINK = color(244, 114, 208);
+    var TYPES = ['red', 'yellow', 'green', 'orange', 'blue', 'purple', 'pink'];
     var COLORS = [RED, YELLOW, GREEN, ORANGE, BLUE, PURPLE, PINK];
     
     canvas = createCanvas(windowWidth, windowHeight);
 
     player = {
         x: 0,
-        y: 0
+        y: 0,
+        life: 5,
+        scent: 'none'
     };
     
     // Initialize the puzzle state
@@ -34,6 +37,7 @@ function setup() {
         for(var y=0;y<PUZZLE_HEIGHT;y++) {
             var index = round(random(COLORS.length - 1));
             puzzle[x][y] = {
+                type: TYPES[index],
                 color: COLORS[index]
             };
         }
@@ -52,7 +56,60 @@ function draw() {
     }
     // Draw the player
     fill(255);
-    ellipse(player.x * TILE_SIZE + TILE_SIZE/2, player.y * TILE_SIZE + TILE_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
+    ellipse((player.x + 0.5) * TILE_SIZE, player.y * TILE_SIZE + TILE_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
+    // Draw the player's life
+    for(var i=0;i<player.life;i++) {
+        ellipse(TILE_SIZE + i * 32, PUZZLE_HEIGHT * TILE_SIZE, 32, 32);
+    }
+}
+
+function movePlayer(x, y) {
+    // Check that this is not out of bounds
+    if (x < 0 || x > PUZZLE_WIDTH+1 || y < 0 || y > PUZZLE_HEIGHT-1) {
+        return;
+    }
+    // Handle stepping on the puzzle
+    if(x !== 0 && x !== PUZZLE_WIDTH+1) {
+        var pzlX = x-1;
+        var pzlY = y;
+        switch(puzzle[pzlX][pzlY].type) {
+        case 'red':
+            return;
+        case 'yellow':
+            player.life--;
+            break;
+        case 'green':
+            break;
+        case 'orange':
+            player.scent = 'oranges';
+            break;
+        case 'blue':
+            if(player.scent === 'oranges') {
+                player.life--;
+            }
+            player.scent = 'none';
+            var adjacentYellow = ((pzlX > 0 && puzzle[pzlX-1][pzlY].type === 'yellow') ||
+                (pzlX < PUZZLE_WIDTH - 1 && puzzle[pzlX+1][pzlY].type === 'yellow') ||
+                (pzlY > 0 && puzzle[pzlX][pzlY-1].type === 'yellow') ||
+                (pzlY < PUZZLE_HEIGHT - 1 && puzzle[pzlX][pzlY+1].type === 'yellow'));
+            if(adjacentYellow) {
+                player.life--;
+            }
+            break;
+        case 'purple':
+            var directionX = x - player.x;
+            var directionY = y - player.y;
+            player.x = x;
+            player.y = y;
+            player.scent = 'lemons';
+            x += directionX;
+            y += directionY;
+            movePlayer(x, y);
+            return;
+        }
+    }
+    player.x = x;
+    player.y = y;
 }
 
 function keyPressed() {
@@ -73,11 +130,5 @@ function keyPressed() {
         y++;
         break;
     }
-    // Check that this is not out of bounds
-    if (x >=0 && x<PUZZLE_WIDTH+2) {
-        player.x = x;
-    }
-    if (y >=0 && y<PUZZLE_HEIGHT) {
-        player.y = y;
-    }
+    movePlayer(x, y);
 }
