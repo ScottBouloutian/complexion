@@ -1,16 +1,38 @@
-var canvas;
-var player;
-
 var TILE_SIZE = 64;
 var PLAYER_SIZE = 50;
 
 var PUZZLE_WIDTH = 16;
 var PUZZLE_HEIGHT = 8;
 
+var TYPES = ['red', 'yellow', 'green', 'orange', 'blue', 'purple', 'pink'];
+var TILES;
 
+var canvas;
+var player;
 var puzzle;
 
+function generatePuzzle() {
+    puzzle = new Array(PUZZLE_WIDTH);
+    for(var x=0;x<PUZZLE_WIDTH;x++) {
+        puzzle[x] = new Array(PUZZLE_HEIGHT);
+        for(var y=0;y<PUZZLE_HEIGHT;y++) {
+            var index = round(random(TYPES.length - 1));
+            puzzle[x][y] = TILES[TYPES[index]];
+        }
+    }
+}
+
 function setup() {
+    canvas = createCanvas(windowWidth, windowHeight);
+    canvas.parent('game');
+    // Initialize the player
+    player = {
+        x: 0,
+        y: 0,
+        life: 5,
+        scent: 'none'
+    };
+    // Initialize the possible tiles
     var RED = color(231, 76, 60);
     var YELLOW = color(241, 196, 15);
     var GREEN = color(46, 204, 113);
@@ -18,30 +40,16 @@ function setup() {
     var BLUE = color(52, 152, 219);
     var PURPLE = color(155, 89, 182);
     var PINK = color(244, 114, 208);
-    var TYPES = ['red', 'yellow', 'green', 'orange', 'blue', 'purple', 'pink'];
     var COLORS = [RED, YELLOW, GREEN, ORANGE, BLUE, PURPLE, PINK];
-    
-    canvas = createCanvas(windowWidth, windowHeight);
-
-    player = {
-        x: 0,
-        y: 0,
-        life: 5,
-        scent: 'none'
-    };
-    
+    TILES = {};
+    TYPES.forEach(function(type, index) {
+        TILES[type] = {
+            type: type,
+            color: COLORS[index]
+        };
+    });
     // Initialize the puzzle state
-    puzzle = new Array(PUZZLE_WIDTH);
-    for(var x=0;x<PUZZLE_WIDTH;x++) {
-        puzzle[x] = new Array(PUZZLE_HEIGHT);
-        for(var y=0;y<PUZZLE_HEIGHT;y++) {
-            var index = round(random(COLORS.length - 1));
-            puzzle[x][y] = {
-                type: TYPES[index],
-                color: COLORS[index]
-            };
-        }
-    }
+    generatePuzzle();
 }
 
 function draw() {
@@ -79,6 +87,8 @@ function movePlayer(x, y) {
             player.life--;
             break;
         case 'green':
+            generatePuzzle();
+            puzzle[pzlX][pzlY] = TILES.green;
             break;
         case 'orange':
             player.scent = 'oranges';
