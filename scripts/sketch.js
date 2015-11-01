@@ -1,15 +1,17 @@
 var TILE_SIZE = 64;
 var PLAYER_SIZE = 50;
-
 var PUZZLE_WIDTH = 16;
 var PUZZLE_HEIGHT = 8;
-
 var TYPES = ['red', 'yellow', 'green', 'orange', 'blue', 'purple', 'pink'];
+var COLORS;
 var TILES;
+var HEART;
 
 var canvas;
 var player;
 var puzzle;
+var startTime;
+var elapsedTime;
 
 function generatePuzzle() {
     puzzle = new Array(PUZZLE_WIDTH);
@@ -32,6 +34,9 @@ function setup() {
         life: 5,
         scent: 'none'
     };
+    elapsedTime = 0;
+    // Load assets
+    HEART = loadImage('assets/heart.png');
     // Initialize the possible tiles
     var RED = color(231, 76, 60);
     var YELLOW = color(241, 196, 15);
@@ -40,16 +45,23 @@ function setup() {
     var BLUE = color(52, 152, 219);
     var PURPLE = color(155, 89, 182);
     var PINK = color(244, 114, 208);
-    var COLORS = [RED, YELLOW, GREEN, ORANGE, BLUE, PURPLE, PINK];
+    COLORS = [RED, YELLOW, GREEN, ORANGE, BLUE, PURPLE, PINK];
     TILES = {};
     TYPES.forEach(function(type, index) {
         TILES[type] = {
             type: type,
-            color: COLORS[index]
+            index: index
         };
     });
     // Initialize the puzzle state
     generatePuzzle();
+    // Prevent page scrolling on arrow key press
+    window.addEventListener("keydown", function(e) {
+        // arrow keys
+        if([37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+            e.preventDefault();
+        }
+    }, false);
 }
 
 function draw() {
@@ -58,8 +70,22 @@ function draw() {
     // Draw the puzzle area
     for(var x=0;x<PUZZLE_WIDTH;x++) {
         for(var y=0;y<PUZZLE_HEIGHT;y++) {
-            fill(puzzle[x][y].color);
-            rect((x + 1) * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            var tile = puzzle[x][y];
+            switch(tile.type) {
+            case 'red':
+                var baseX = (x + 1) * TILE_SIZE;
+                var baseY = y * TILE_SIZE;
+                var LIGHT_RED = color(255, 76, 60);
+                fill(LIGHT_RED);
+                rect(baseX, baseY, TILE_SIZE, TILE_SIZE);
+                fill(COLORS[tile.index]);
+                rect(baseX + 10, baseY + 10, TILE_SIZE-20, TILE_SIZE-20);
+                stroke(0);
+                break;
+            default:
+                fill(COLORS[tile.index]);
+                rect((x + 1) * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
         }
     }
     // Draw the player
@@ -67,14 +93,26 @@ function draw() {
     ellipse((player.x + 0.5) * TILE_SIZE, player.y * TILE_SIZE + TILE_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
     // Draw the player's life
     for(var i=0;i<player.life;i++) {
-        ellipse(TILE_SIZE + i * 32, PUZZLE_HEIGHT * TILE_SIZE, 32, 32);
+        image(HEART, TILE_SIZE + i * 32, PUZZLE_HEIGHT * TILE_SIZE, 32, 32);
     }
+    // Draw the time
+    fill(0);
+    if(player.x > 0 && player.x < PUZZLE_WIDTH + 1) {
+        var now = new Date();
+        var time = now.getTime();
+        elapsedTime = time - startTime;
+    }
+    text(elapsedTime / 1000, TILE_SIZE + 6 * 32, PUZZLE_HEIGHT * TILE_SIZE + 16);
 }
 
 function movePlayer(x, y) {
     // Check that this is not out of bounds
     if (x < 0 || x > PUZZLE_WIDTH+1 || y < 0 || y > PUZZLE_HEIGHT-1) {
         return;
+    }
+    // Start the clock if movign onto the puzzle
+    if(player.x === 0 && x === 1) {
+        startTime = Date.now();
     }
     // Handle stepping on the puzzle
     if(x !== 0 && x !== PUZZLE_WIDTH+1) {
@@ -88,8 +126,8 @@ function movePlayer(x, y) {
             break;
         case 'green':
             generatePuzzle();
-            puzzle[pzlX][pzlY] = TILES.green;
-            break;
+            movePlayer(x, y);
+            return;
         case 'orange':
             player.scent = 'oranges';
             break;
@@ -118,8 +156,20 @@ function movePlayer(x, y) {
             return;
         }
     }
-    player.x = x;
-    player.y = y;
+    if(player.life <= 0) {
+        player = {
+            x: 0,
+            y: 0,
+            life: 5,
+            scent: 'none'
+        };
+        elapsedTime = 0;
+        startTime = Date.now();
+        generatePuzzle();
+    } else {
+        player.x = x;
+        player.y = y;
+    }
 }
 
 function keyPressed() {
